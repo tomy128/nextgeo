@@ -1,0 +1,113 @@
+import { askLLM } from './llm';
+
+export interface ActionPlanResult {
+  simulatedQnAs: Array<{
+    question: string;
+    answers: Array<{
+      engine: string;
+      content: string;
+      mentioned: boolean;
+    }>;
+  }>;
+  actionPlan: {
+    tasks: Array<{
+      priority: 'P0' | 'P1' | 'P2';
+      title: string;
+      reason: string;
+    }>;
+    prediction: {
+      currentScore: number;
+      projectedScore: number;
+      increaseRate: string;
+    };
+  };
+}
+
+export async function generateActionPlan(
+  url: string,
+  keywords: string,
+  websiteContent: string,
+  scoringContext: any
+): Promise<ActionPlanResult> {
+  const currentScore = scoringContext.summary?.score || 40;
+  
+  const prompt = `
+You are an expert AI Search Engine Evaluator (GEO Specialist).
+Based ONLY on the following company website content and the previous diagnostics, generate simulated AI search responses and an ACTIONABLE, REALISTIC GEO optimization roadmap.
+
+Company URL: ${url}
+Core Keywords: ${keywords}
+Current GEO Score: ${currentScore}
+Competitor Info from previous steps: ${JSON.stringify(scoringContext.competitorComparison || {})}
+
+Scraped Website Content:
+"""
+${websiteContent}
+"""
+
+**CRITICAL RULES**:
+1. DO NOT invent global competitors. Only use the competitor provided in the Competitor Info.
+2. The simulated Q&As must accurately reflect how a real LLM would respond based on the provided website content's visibility.
+3. You MUST generate AT LEAST TWO different dimensions of simulated questions in the "simulatedQnAs" array (e.g., one asking for general best tools, and another asking for a direct comparison or specific use case).
+4. The "tasks" array MUST contain dynamically generated, highly specific, and executable GEO optimization tasks based on the actual content gaps. DO NOT use generic placeholders like "新增对比文章" unless it specifically applies to the context (e.g., "撰写《问卷网 vs 问卷星：数据安全合规性深度对比》").
+5. The projectedScore must be mathematically reasonable (e.g., currentScore + 20 to 40 points).
+
+Output STRICTLY in the following JSON format:
+
+{
+  "simulatedQnAs": [
+    {
+      "question": "<Realistic user query asking for best tools>",
+      "answers": [
+        {
+          "engine": "<Engine name>",
+          "content": "<Simulated response>",
+          "mentioned": false
+        },
+        {
+          "engine": "<Another engine name>",
+          "content": "<Simulated response>",
+          "mentioned": true
+        }
+      ]
+    },
+    {
+      "question": "<Another realistic user query focusing on a DIFFERENT dimension (e.g., direct comparison, pricing, specific feature)>",
+      "answers": [
+        {
+          "engine": "<Engine name>",
+          "content": "<Simulated response>",
+          "mentioned": true
+        },
+        {
+          "engine": "<Another engine name>",
+          "content": "<Simulated response>",
+          "mentioned": false
+        }
+      ]
+    }
+  ],
+  "actionPlan": {
+    "tasks": [
+      {
+        "priority": "P0",
+        "title": "<Specific, actionable content creation or technical optimization task>",
+        "reason": "<Why this specific task directly impacts AI retrieval for this brand>"
+      },
+      {
+        "priority": "P1",
+        "title": "<Another specific task>",
+        "reason": "<Reason>"
+      }
+    ],
+    "prediction": {
+      "currentScore": ${currentScore},
+      "projectedScore": <number 75-95>,
+      "increaseRate": "+<number>%"
+    }
+  }
+}
+`;
+
+  return askLLM<ActionPlanResult>(prompt);
+}
