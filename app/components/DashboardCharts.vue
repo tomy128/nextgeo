@@ -21,6 +21,11 @@ const metricTooltips: Record<string, string> = {
   '核心卖点穿透率': '您的核心差异化优势（如AI驱动、高性价比）被大模型吸收和表达的程度。'
 }
 
+const getCompetitorScore = (compName: string, idx: number) => {
+  if (!props.competitorComparison?.competitors?.[compName]) return 0;
+  return props.competitorComparison.competitors[compName][idx] || 0;
+}
+
 onMounted(() => {
   if (radarChartRef.value) {
     radarChart = echarts.init(radarChartRef.value)
@@ -34,7 +39,10 @@ onMounted(() => {
         backdropFilter: 'blur(10px)'
       },
       legend: {
-        data: props.competitorUrl ? [props.competitorComparison.brandName || 'Target Brand', props.competitorComparison.competitorName || 'Competitor'] : [props.competitorComparison.brandName || 'Target Brand'],
+        data: [
+          props.competitorComparison?.brandName || 'Target Brand',
+          ...(props.competitorUrl && props.competitorComparison?.competitorNames ? props.competitorComparison.competitorNames : [])
+        ],
         bottom: 0,
         textStyle: { color: '#9CA3AF', fontFamily: 'Plus Jakarta Sans', fontSize: 12 },
         icon: 'circle',
@@ -48,39 +56,34 @@ onMounted(() => {
         splitArea: { show: false },
         axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } }
       },
-      series: [
+        series: [
         {
           name: 'Analysis',
           type: 'radar',
-          data: props.competitorUrl ? [
+          data: [
             {
-              value: props.competitorComparison.myBrand,
-              name: props.competitorComparison.brandName || 'Target Brand',
+              value: props.competitorComparison?.myBrand || [],
+              name: props.competitorComparison?.brandName || 'Target Brand',
               itemStyle: { color: '#60A5FA' },
               lineStyle: { color: '#60A5FA', width: 2 },
               areaStyle: { color: 'rgba(96, 165, 250, 0.2)' },
               symbol: 'circle',
               symbolSize: 6
             },
-            {
-              value: props.competitorComparison.competitor,
-              name: props.competitorComparison.competitorName || 'Competitor',
-              itemStyle: { color: '#9CA3AF' },
-              lineStyle: { color: '#9CA3AF', width: 2, type: 'dashed' },
-              areaStyle: { color: 'rgba(156, 163, 175, 0.1)' },
-              symbol: 'circle',
-              symbolSize: 6
-            }
-          ] : [
-            {
-              value: props.competitorComparison.myBrand,
-              name: props.competitorComparison.brandName || 'Target Brand',
-              itemStyle: { color: '#60A5FA' },
-              lineStyle: { color: '#60A5FA', width: 2 },
-              areaStyle: { color: 'rgba(96, 165, 250, 0.2)' },
-              symbol: 'circle',
-              symbolSize: 6
-            }
+            ...(props.competitorUrl && props.competitorComparison?.competitorNames && props.competitorComparison?.competitors ? 
+              props.competitorComparison.competitorNames.map((compName, idx) => {
+                const colors = ['#9CA3AF', '#A78BFA', '#F472B6', '#34D399'];
+                const color = colors[idx % colors.length];
+                return {
+                  value: props.competitorComparison!.competitors[compName] || [],
+                  name: compName,
+                  itemStyle: { color },
+                  lineStyle: { color, width: 2, type: 'dashed' },
+                  areaStyle: { color: 'transparent' }, // Make competitors transparent to avoid overlapping mess
+                  symbol: 'circle',
+                  symbolSize: 6
+                }
+              }) : [])
           ]
         }
       ]
@@ -144,7 +147,7 @@ onMounted(() => {
       <!-- 补充维度数据：如果存在竞品则显示条形对比 -->
       <div v-if="competitorUrl" class="mt-8 space-y-5 relative z-10 pt-6 border-t border-border/50">
         <h4 class="font-sans text-sm font-semibold text-gray-300 mb-4">核心指标对比详情</h4>
-        <div v-for="(label, idx) in competitorComparison.labels" :key="label" class="space-y-3">
+        <div v-for="(label, idx) in competitorComparison?.labels || []" :key="label" class="space-y-3">
           <div class="flex items-center gap-1.5 text-xs font-mono uppercase tracking-widest text-muted relative group/tooltip">
             <span>{{ label }}</span>
             <Info class="w-3 h-3 text-muted/60 cursor-help hover:text-white transition-colors" />
@@ -157,20 +160,21 @@ onMounted(() => {
             <div class="flex-grow h-1.5 rounded-full bg-surface border border-border overflow-hidden relative">
               <div 
                 class="absolute left-0 top-0 h-full bg-accent/80 rounded-full transition-all duration-1000 ease-out"
-                :style="`width: ${competitorComparison.myBrand[idx]}%`"
+                :style="`width: ${competitorComparison?.myBrand?.[idx] || 0}%`"
               ></div>
             </div>
-            <span class="text-xs font-mono text-accent w-8 text-right">{{ competitorComparison.myBrand[idx] }}</span>
+            <span class="text-xs font-mono text-accent w-8 text-right">{{ competitorComparison?.myBrand?.[idx] || 0 }}</span>
           </div>
-          <div class="flex items-center gap-3">
+          <div v-for="(compName, cIdx) in competitorComparison?.competitorNames || []" :key="compName" class="flex items-center gap-3">
             <!-- 竞品 -->
             <div class="flex-grow h-1.5 rounded-full bg-surface border border-border overflow-hidden relative">
               <div 
-                class="absolute left-0 top-0 h-full bg-muted/60 rounded-full transition-all duration-1000 ease-out"
-                :style="`width: ${competitorComparison.competitor[idx]}%`"
+                class="absolute left-0 top-0 h-full rounded-full transition-all duration-1000 ease-out"
+                :class="cIdx === 0 ? 'bg-muted/60' : cIdx === 1 ? 'bg-purple/60' : cIdx === 2 ? 'bg-pink-400/60' : 'bg-emerald-400/60'"
+                :style="`width: ${getCompetitorScore(compName, idx)}%`"
               ></div>
             </div>
-            <span class="text-xs font-mono text-muted w-8 text-right">{{ competitorComparison.competitor[idx] }}</span>
+            <span class="text-xs font-mono text-muted w-8 text-right">{{ getCompetitorScore(compName, idx) }}</span>
           </div>
         </div>
       </div>

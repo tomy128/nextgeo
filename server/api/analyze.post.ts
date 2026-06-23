@@ -20,15 +20,16 @@ export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
     
-    if (!body?.url) {
-      sendEvent('error', { message: 'URL is required' });
+    if (!body?.brandOrUrl) {
+      sendEvent('error', { message: '品牌名称或URL是必填项 (brandOrUrl is required)' });
       event.node.res.end();
       return;
     }
 
-    const competitorUrl = body.competitor || '';
+    const competitors = body.competitors || [];
     const keywords = body.keywords || 'Brand Profile';
-    const cacheKey = `${body.url}|${keywords}|${competitorUrl}`;
+    const brandOrUrl = body.brandOrUrl || '';
+    const cacheKey = `${brandOrUrl}|${keywords}|${competitors.join(',')}`;
 
     // If cached, send everything instantly
     if (analysisCache.has(cacheKey)) {
@@ -42,23 +43,31 @@ export default defineEventHandler(async (event) => {
       return;
     }
 
-    // --- STEP 1: Scraping ---
-    sendEvent('scraping', { message: '正在抓取官网并提取核心语料...' });
-    const websiteContent = await scrapeWebsite(body.url);
+    // --- STEP 1: Scraping (Conditional) ---
+    sendEvent('scraping', { message: '正在分析品牌标识并提取关联知识...' });
+    
+    let websiteContent = '';
+    const isUrl = brandOrUrl.startsWith('http://') || brandOrUrl.startsWith('https://');
+    
+    if (isUrl) {
+      websiteContent = await scrapeWebsite(brandOrUrl);
+    } else {
+      websiteContent = `The target brand is "${brandOrUrl}". Rely on your internal knowledge base to evaluate this brand's market presence and reputation.`;
+    }
     
     // --- STEP 2: Scoring ---
     sendEvent('scoring_start', { message: '正在连接大模型进行初始打分评估...' });
-    const scoringResult = await generateScoring(body.url, keywords, competitorUrl, websiteContent);
+    const scoringResult = await generateScoring(brandOrUrl, keywords, competitors, websiteContent);
     sendEvent('scoring', scoringResult);
 
     // --- STEP 3: Diagnostics & Content Gaps ---
     sendEvent('diagnostics_start', { message: '正在进行深度病灶诊断与内容缺口分析...' });
-    const diagnosticsResult = await generateDiagnostics(body.url, keywords, websiteContent, scoringResult);
+    const diagnosticsResult = await generateDiagnostics(brandOrUrl, keywords, websiteContent, scoringResult);
     sendEvent('diagnostics', diagnosticsResult);
 
     // --- STEP 4: Simulation & Action Plan ---
     sendEvent('action_start', { message: '正在模拟真实问答场景并生成行动处方...' });
-    const actionPlanResult = await generateActionPlan(body.url, keywords, websiteContent, scoringResult);
+    const actionPlanResult = await generateActionPlan(brandOrUrl, keywords, websiteContent, scoringResult);
     sendEvent('action', actionPlanResult);
 
     // Combine results for cache

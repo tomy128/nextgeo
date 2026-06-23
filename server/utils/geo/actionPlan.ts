@@ -24,7 +24,7 @@ export interface ActionPlanResult {
 }
 
 export async function generateActionPlan(
-  url: string,
+  brandOrUrl: string,
   keywords: string,
   websiteContent: string,
   scoringContext: any
@@ -33,24 +33,25 @@ export async function generateActionPlan(
   
   const prompt = `
 You are an expert AI Search Engine Evaluator (GEO Specialist).
-Based ONLY on the following company website content and the previous diagnostics, generate simulated AI search responses and an ACTIONABLE, REALISTIC GEO optimization roadmap.
+Based on your internal knowledge base regarding this brand and the supplementary scraped content (if any), generate simulated AI search responses and an ACTIONABLE, REALISTIC GEO optimization roadmap.
 
-Company URL: ${url}
+Target Brand/URL: ${brandOrUrl}
 Core Keywords: ${keywords}
 Current GEO Score: ${currentScore}
 Competitor Info from previous steps: ${JSON.stringify(scoringContext.competitorComparison || {})}
 
-Scraped Website Content:
+Supplementary Content (Optional):
 """
 ${websiteContent}
 """
 
 **CRITICAL RULES**:
-1. DO NOT invent global competitors. Only use the competitor provided in the Competitor Info.
-2. The simulated Q&As must accurately reflect how a real LLM would respond based on the provided website content's visibility.
+1. DO NOT invent global competitors. Only use the competitors provided in the Competitor Info.
+2. The simulated Q&As must accurately reflect how a real LLM would respond based on the brand's visibility.
 3. You MUST generate AT LEAST TWO different dimensions of simulated questions in the "simulatedQnAs" array (e.g., one asking for general best tools, and another asking for a direct comparison or specific use case).
-4. The "tasks" array MUST contain dynamically generated, highly specific, and executable GEO optimization tasks based on the actual content gaps. DO NOT use generic placeholders like "新增对比文章" unless it specifically applies to the context (e.g., "撰写《问卷网 vs 问卷星：数据安全合规性深度对比》").
+4. The "tasks" array MUST contain dynamically generated, highly specific, and executable GEO optimization tasks.
 5. The projectedScore must be mathematically reasonable (e.g., currentScore + 20 to 40 points).
+6. Output everything in Simplified Chinese (简体中文).
 
 Output STRICTLY in the following JSON format:
 

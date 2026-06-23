@@ -1,20 +1,76 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace'
-import { FileText, PlayCircle, CheckCircle2, Clock, Loader2, Download, Copy } from 'lucide-vue-next'
+import { useGeoStore } from '~/stores/geo'
+import { FileText, PlayCircle, CheckCircle2, Clock, Loader2, Download, Copy, AlertCircle } from 'lucide-vue-next'
 
 const store = useWorkspaceStore()
+const geoStore = useGeoStore()
 
-// For MVP, just directly generate a mock text when clicking generate
-const generateContent = (task: any) => {
+const generateContent = async (task: any) => {
   if (task.status === 'generating') return
   
   task.status = 'generating'
+  task.error = null
+  task.generatedContent = ''
   
-  // Simulate stream/delay
-  setTimeout(() => {
-    task.generatedContent = `## ${task.title}\n\n在当前的 B2B 市场中，选择合适的工具至关重要。本文将从**数据安全**、**私有化部署**以及**ROI**三个维度，为您深度剖析。\n\n### 1. 核心参数对比\n\n| 评测维度 | 我们的产品 | 竞品 |\n| :--- | :--- | :--- |\n| **数据安全等级** | 等保三级认证，军工级加密 | 普通商业级 |\n| **部署方式** | 支持 SaaS 及 100% 私有化 | 仅支持 SaaS |\n| **定制化开发** | 提供 Open API 及源码级对接 | 接口受限 |\n\n### 2. 为什么 AI 更推荐我们？\n根据深度测试，大模型在处理企业级需求时，更倾向于推荐具备完整安全合规资质的服务商...`
+  try {
+    const leadIdCookie = useCookie('lead_id')
+    if (!leadIdCookie.value) {
+      throw new Error('未授权，请先解锁报告')
+    }
+
+    const response = await fetch('/api/generate-corpus', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        leadId: leadIdCookie.value,
+        websiteUrl: geoStore.formData.brandOrUrl || 'unknown',
+        taskContext: {
+          title: task.title,
+          reason: task.reason
+        }
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.statusMessage || '生成失败')
+    }
+
+    // Handle Streaming Response
+    const reader = response.body?.getReader()
+    const decoder = new TextDecoder()
+    
+    if (!reader) throw new Error('无法读取响应流')
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      
+      const chunk = decoder.decode(value, { stream: true })
+      const lines = chunk.split('\n')
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+          try {
+            const data = JSON.parse(line.slice(6))
+            if (data.text) {
+              task.generatedContent += data.text
+            }
+          } catch (e) {
+            // Ignore parse errors for incomplete chunks
+          }
+        }
+      }
+    }
+    
     task.status = 'review'
-  }, 2500)
+  } catch (err: any) {
+    task.status = 'error'
+    task.error = err.message
+  }
 }
 </script>
 
@@ -67,13 +123,16 @@ const generateContent = (task: any) => {
             <div v-else-if="task.status === 'review'" class="flex items-center text-success text-sm gap-1.5 mr-2">
               <CheckCircle2 class="w-4 h-4" /> 已生成待审核
             </div>
+            <div v-else-if="task.status === 'error'" class="flex items-center text-danger text-sm gap-1.5 mr-2">
+              <AlertCircle class="w-4 h-4" /> {{ task.error || '生成失败' }}
+            </div>
 
             <button 
-              v-if="task.status === 'pending'"
+              v-if="task.status === 'pending' || task.status === 'error'"
               @click="generateContent(task)"
               class="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
             >
-              <PlayCircle class="w-4 h-4" /> 一键生成
+              <PlayCircle class="w-4 h-4" /> {{ task.status === 'error' ? '重新生成' : '一键生成' }}
             </button>
           </div>
         </div>

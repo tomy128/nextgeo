@@ -28,7 +28,8 @@ export default defineEventHandler(async (event) => {
     .insert([
       { email: body.email, website_url: body.websiteUrl }
     ])
-    .select()
+    .select('id, email, website_url, generation_count')
+    .single()
 
   if (error) {
     throw createError({
@@ -37,5 +38,13 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  return { success: true, data }
+  return { 
+    success: true, 
+    data: {
+      id: data.id,
+      email: data.email,
+      websiteUrl: data.website_url,
+      generationCount: data.generation_count
+    } 
+  }
 })

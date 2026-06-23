@@ -22,18 +22,19 @@ export interface DiagnosticsResult {
 }
 
 export async function generateDiagnostics(
-  url: string,
+  brandOrUrl: string,
   keywords: string,
   websiteContent: string,
   scoringContext: any
 ): Promise<DiagnosticsResult> {
   const prompt = `
 You are an expert AI Search Engine Evaluator (GEO Specialist).
-Based ONLY on the following company website content and their initial GEO Score (${scoringContext.summary?.score}), provide a deep-dive diagnostic analysis.
+Based on your internal knowledge base regarding this brand and the supplementary scraped content (if any), provide a deep-dive diagnostic analysis.
 
-Company URL: ${url}
+Target Brand/URL: ${brandOrUrl}
 Core Keywords: ${keywords}
-Scraped Website Content:
+Initial GEO Score: ${scoringContext.summary?.score || 40}
+Supplementary Content (Optional):
 """
 ${websiteContent}
 """
@@ -42,9 +43,10 @@ Competitor Info from previous step: ${JSON.stringify(scoringContext.competitorCo
 Identify WHY AI models might ignore or downrank them, and what content gaps exist.
 
 **CRITICAL RULES**:
-1. DO NOT invent or mention competitors that are not explicitly part of the Competitor Info (e.g., if analyzing "问卷网" and "问卷星", do NOT mention "SurveyMonkey" or "Typeform").
-2. Base all your gaps and suggestions STRICTLY on the actual provided website content. If the content is short, state that the lack of detailed content is the gap.
+1. DO NOT invent or mention competitors that are not explicitly part of the Competitor Info.
+2. Base all your gaps and suggestions on your knowledge of the brand's actual market presence or the supplementary content.
 3. Be brutally honest but highly specific to the provided context.
+4. Output everything in Simplified Chinese (简体中文).
 
 Output STRICTLY in the following JSON format:
 

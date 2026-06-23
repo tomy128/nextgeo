@@ -2,24 +2,39 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGeoStore } from '~/stores/geo'
-import { Search, Globe, Target } from 'lucide-vue-next'
+import { Search, Globe, Target, Plus, X } from 'lucide-vue-next'
 
 const router = useRouter()
 const store = useGeoStore()
 
 const form = ref({
-  url: '',
+  brandOrUrl: '',
   keywords: '',
-  competitor: ''
+  competitors: ['']
 })
 
 const isSubmitting = ref(false)
 
+const addCompetitor = () => {
+  if (form.value.competitors.length < 4) {
+    form.value.competitors.push('')
+  }
+}
+
+const removeCompetitor = (index: number) => {
+  form.value.competitors.splice(index, 1)
+}
+
 const handleSubmit = async () => {
-  if (!form.value.url) return
+  if (!form.value.brandOrUrl) return
   
   isSubmitting.value = true
-  store.setFormData(form.value)
+  // Filter out empty competitor inputs before saving to store
+  const cleanedForm = {
+    ...form.value,
+    competitors: form.value.competitors.filter(c => c.trim() !== '')
+  }
+  store.setFormData(cleanedForm)
   
   router.push('/report')
 }
@@ -49,36 +64,57 @@ const handleSubmit = async () => {
         </div>
 
         <form @submit.prevent="handleSubmit" class="glass-card rounded-3xl p-2 max-w-4xl mx-auto shadow-glow shadow-accent/10">
-          <div class="bg-[#0B0F19]/80 rounded-[1.25rem] p-5 md:p-6 space-y-5 md:space-y-0 md:grid md:grid-cols-12 md:gap-5 items-end">
+          <div class="bg-[#0B0F19]/80 rounded-[1.25rem] p-5 md:p-6 space-y-5 md:space-y-0 md:grid md:grid-cols-12 md:gap-5 items-start">
             
             <div class="md:col-span-5 space-y-2">
-              <label class="block font-sans text-sm font-semibold text-gray-300 ml-1">企业官网 URL <span class="text-accent">*</span></label>
+              <label class="block font-sans text-sm font-semibold text-gray-300 ml-1">品牌名称 或 官网 URL<span class="text-danger ml-1">*</span></label>
               <div class="relative group">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Globe class="w-5 h-5 text-muted group-focus-within:text-accent transition-colors" />
                 </div>
                 <input 
-                  v-model="form.url"
-                  type="url" 
+                  v-model="form.brandOrUrl"
+                  type="text" 
                   required
-                  placeholder="https://yourcompany.com" 
+                  placeholder="如：飞书 或 https://larksuite.com" 
                   class="w-full bg-surface hover:bg-surfaceHover border border-border focus:border-accent/50 rounded-xl py-3 pl-12 pr-4 text-white font-mono placeholder:text-muted/50 outline-none transition-all shadow-inner select-auto"
                 />
               </div>
             </div>
 
             <div class="md:col-span-4 space-y-2">
-              <label class="block font-sans text-sm font-semibold text-gray-300 ml-1">竞品官网 URL（选填）</label>
-              <div class="relative group">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Target class="w-5 h-5 text-muted group-focus-within:text-danger transition-colors" />
+              <div class="flex items-center justify-between ml-1">
+                <!-- （选填，最多4个） -->
+                <label class="block font-sans text-sm font-semibold text-gray-300">竞品名称 或 官网 URL</label>
+                <button 
+                  v-if="form.competitors.length < 4" 
+                  type="button" 
+                  @click="addCompetitor"
+                  class="text-accent hover:text-accent/80 transition-colors flex items-center gap-1 text-xs"
+                >
+                  <Plus class="w-3 h-3" /> 添加竞品
+                </button>
+              </div>
+              <div class="space-y-2">
+                <div v-for="(comp, index) in form.competitors" :key="index" class="relative group">
+                  <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Target class="w-5 h-5 text-muted group-focus-within:text-danger transition-colors" />
+                  </div>
+                  <input 
+                    v-model="form.competitors[index]"
+                    type="text" 
+                    :placeholder="index === 0 ? '如：钉钉 或 https://dingtalk.com' : '另一个竞品'" 
+                    class="w-full bg-surface hover:bg-surfaceHover border border-border focus:border-danger/50 rounded-xl py-3 pl-12 pr-10 text-white font-mono placeholder:text-muted/50 outline-none transition-all shadow-inner select-auto"
+                  />
+                  <button 
+                    v-if="form.competitors.length > 1"
+                    type="button"
+                    @click="removeCompetitor(index)"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-muted hover:text-danger transition-colors"
+                  >
+                    <X class="w-4 h-4" />
+                  </button>
                 </div>
-                <input 
-                  v-model="form.competitor"
-                  type="url" 
-                  placeholder="https://competitor.com" 
-                  class="w-full bg-surface hover:bg-surfaceHover border border-border focus:border-danger/50 rounded-xl py-3 pl-12 pr-4 text-white font-mono placeholder:text-muted/50 outline-none transition-all shadow-inner select-auto"
-                />
               </div>
             </div>
 

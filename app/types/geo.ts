@@ -1,4 +1,23 @@
 export interface GeoReportData {
+  overview: {
+    mentionRate: number
+    topPositionRate: number
+    positiveSentiment: number
+    negativeSentiment: number
+  }
+  trends: {
+    dates: string[]
+    mentionData: Record<string, number[]> // e.g., { 'MyBrand': [10, 20], 'Competitor1': [5, 15] }
+  }
+  wordCloud: {
+    name: string
+    value: number
+  }[]
+  treemap: {
+    name: string
+    value: number
+    children?: { name: string; value: number }[]
+  }[]
   summary: {
     score: number
     status: 'invisible' | 'weak' | 'strong'
@@ -7,10 +26,10 @@ export interface GeoReportData {
   engineScores: Record<string, number>
   competitorComparison: {
     brandName: string
-    competitorName?: string
+    competitorNames: string[]
     labels: string[]
     myBrand: number[]
-    competitor: number[]
+    competitors: Record<string, number[]>
   }
   diagnostics: {
     id: string
@@ -53,7 +72,7 @@ export interface GeoReportData {
 }
 
 export interface FormData {
-  url: string;
+  brandOrUrl: string;
   keywords: string;
-  competitor: string;
+  competitors: string[];
 }

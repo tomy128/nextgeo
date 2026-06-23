@@ -16,11 +16,17 @@ export default defineNuxtConfig({
       ]
     }
   },
+  build: {
+    transpile: ['vue-echarts', 'resize-detector']
+  },
   vite: {
     optimizeDeps: {
       include: [
         '@vue/devtools-core',
         '@vue/devtools-kit',
+        'echarts',
+        'vue-echarts',
+        'echarts-wordcloud',
         'lucide-vue-next'
       ]
     }

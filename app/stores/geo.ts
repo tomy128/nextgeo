@@ -4,9 +4,9 @@ import type { GeoReportData, FormData } from '~/types/geo'
 export const useGeoStore = defineStore('geo', {
   state: () => ({
     formData: {
-      url: '',
+      brandOrUrl: '',
       keywords: '',
-      competitor: ''
+      competitors: []
     } as FormData,
     isGenerating: false,
     currentStep: '',
@@ -30,9 +30,9 @@ export const useGeoStore = defineStore('geo', {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            url: this.formData.url,
+            brandOrUrl: this.formData.brandOrUrl,
             keywords: this.formData.keywords,
-            competitor: this.formData.competitor
+            competitors: this.formData.competitors
           })
         })
 
@@ -83,6 +83,38 @@ export const useGeoStore = defineStore('geo', {
         console.error('Failed to generate report:', error)
         // Fallback to mock data if API fails so the UI doesn't break
         this.reportData = {
+          overview: {
+            mentionRate: 15.4,
+            topPositionRate: 5.2,
+            positiveSentiment: 42.8,
+            negativeSentiment: 12.5
+          },
+          trends: {
+            dates: ['06-12', '06-13', '06-14', '06-15', '06-16', '06-17', '06-18'],
+            mentionData: {
+              'MyBrand': [10, 12, 11, 15, 14, 18, 15],
+              [this.formData.competitors[0] || 'Competitor1']: [45, 48, 52, 50, 55, 53, 58]
+            }
+          },
+          wordCloud: [
+            { name: '价格贵', value: 100 },
+            { name: '功能不全', value: 80 },
+            { name: '缺乏案例', value: 60 },
+            { name: '售后慢', value: 40 },
+            { name: '界面复杂', value: 30 }
+          ],
+          treemap: [
+            {
+              name: '行业声量分布',
+              value: 100,
+              children: [
+                { name: this.formData.competitors[0] || 'Competitor1', value: 50 },
+                { name: 'Competitor2', value: 30 },
+                { name: 'MyBrand', value: 15 },
+                { name: 'Others', value: 5 }
+              ]
+            }
+          ],
           summary: {
             score: 42,
             status: 'invisible',
@@ -96,10 +128,12 @@ export const useGeoStore = defineStore('geo', {
           },
           competitorComparison: {
             brandName: '目标品牌',
-            competitorName: this.formData.competitor || '竞品',
+            competitorNames: this.formData.competitors.length ? this.formData.competitors : ['竞品A'],
             labels: ['提及率', '情感正向度', '信息准确性', '核心卖点穿透率'],
             myBrand: [20, 60, 40, 30],
-            competitor: [80, 85, 90, 75]
+            competitors: {
+              [this.formData.competitors[0] || '竞品A']: [80, 85, 90, 75]
+            }
           },
           diagnostics: [
             {
@@ -143,7 +177,7 @@ export const useGeoStore = defineStore('geo', {
             tasks: [
               {
                 priority: 'P0',
-                title: `新增《我们 vs ${this.formData.competitor || '竞品'}》对比文章`,
+                title: `新增《我们 vs ${this.formData.competitors[0] || '竞品'}》对比文章`,
                 reason: "比较型内容是 AI 最容易引用的格式，能直接抢占竞品搜索流量。"
               }
             ],
